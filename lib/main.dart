@@ -1,6 +1,5 @@
-import 'package:Ancil_Media/view/Homepage.dart';
+import 'package:ancilmedia/view/Homepage.dart';
 import 'package:flutter/material.dart';
-// import 'package:untitled2/view/Homepage.dart';
 
 void main() {
   runApp(const MyApp());

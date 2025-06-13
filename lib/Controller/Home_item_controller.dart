@@ -8,6 +8,7 @@ class ApiService {
   static Future<List<Item>> fetchItems() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/item'),
+
       headers: {
         'ngrok-skip-browser-warning': 'true',
       },
