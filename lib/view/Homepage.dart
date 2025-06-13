@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-// import 'package:untitled2/view/Responsive/Responsive_font.dart';
-// import 'package:untitled2/view/Responsive/Responsive_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-
 import '../Controller/Home_item_controller.dart';
 import '../model/Home_Item.dart';
 import 'Responsive/Responsive_font.dart';
 import 'Responsive/responsive_page.dart';
-import 'detailpagetwo.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
