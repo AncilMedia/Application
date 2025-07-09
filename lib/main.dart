@@ -33,38 +33,49 @@ void _showFlutterNotification(RemoteMessage message) {
   RemoteNotification? notification = message.notification;
   AndroidNotification? android = message.notification?.android;
 
-  if (notification != null && android != null) {
+  if (notification != null) {
     flutterLocalNotificationsPlugin.show(
       notification.hashCode,
       notification.title,
       notification.body,
       NotificationDetails(
-        android: AndroidNotificationDetails(
+        android: android != null
+            ? AndroidNotificationDetails(
           defaultChannel.id,
           defaultChannel.name,
           channelDescription: defaultChannel.description,
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
-        ),
+        )
+            : null,
+        iOS: const DarwinNotificationDetails(),
       ),
     );
   }
 }
 
-// 🔧 Initialize Local Notification Settings
+// ✅ Initialize Local Notification Settings
 Future<void> _initLocalNotifications() async {
   const AndroidInitializationSettings androidSettings =
   AndroidInitializationSettings('@mipmap/ic_launcher');
 
+  const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+  );
+
   final InitializationSettings settings = InitializationSettings(
     android: androidSettings,
+    iOS: iosSettings, // ✅ Added for iOS
   );
 
   await flutterLocalNotificationsPlugin.initialize(settings);
 
   await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(defaultChannel);
 }
 
