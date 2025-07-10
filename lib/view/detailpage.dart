@@ -115,7 +115,8 @@ class _ListItemDetailsPageState extends State<ListItemDetailsPage> {
                                       ),
                                     ),
                                   );
-                                } else {
+                                }
+                                else {
                                   showCustomSnackBar(context, "Empty List", false);
                                 }
                               } else if (itemType == 'link') {

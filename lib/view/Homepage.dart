@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import '../Controller/Home_item_controller.dart';
+import '../View_model/Custom_snackbar.dart';
 import '../model/Home_Item.dart';
 import 'Responsive/Responsive_font.dart';
 import '../View_model/Web_view.dart';
@@ -129,15 +130,20 @@ class _HomepageState extends State<Homepage> {
                       return GestureDetector(
                         onTap: () async {
                           if (itemType == 'list') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ListItemDetailsPage(
-                                  parentItem: item,
-                                  rootItem: item,
+                            final subList = await ApiService.fetchSubItems(item.id);
+                            if (subList.isNotEmpty){
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ListItemDetailsPage(
+                                    parentItem: item,
+                                    rootItem: item,
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            } else {
+                              showCustomSnackBar(context, "Empty List", false);
+                            }
                           } else if (itemType == 'link') {
                             final trimmedUrl = item.url?.trim() ?? '';
                             if (trimmedUrl.isNotEmpty) {
@@ -161,6 +167,8 @@ class _HomepageState extends State<Homepage> {
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(25),
                               topRight: Radius.circular(25),
+                              bottomLeft: Radius.circular(5),
+                              bottomRight: Radius.circular(5),
                             ),
                             child: SizedBox(
                               height: MediaQuery.of(context).size.height * .3,
