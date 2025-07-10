@@ -27,7 +27,7 @@ class Item {
       image: json['image'] ?? '',
       url: json['url'] ?? '',
       index: json['index'] ?? 0,
-      type: json['type'] ?? 'link', // default to 'link' if missing
+      type: json['type'] ?? 'link',
       parentId: json['parentId'],
     );
   }
