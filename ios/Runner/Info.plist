@@ -49,19 +49,23 @@
             <string>remote-notification</string>
         </array>
 
+        <!-- ✅ Flutter Dart VM Debugging over Local Network -->
+        <key>NSLocalNetworkUsageDescription</key>
+        <string>This app uses the local network for debugging features.</string>
+        <key>NSBonjourServices</key>
+        <array>
+            <string>_dartobservatory._tcp</string>
+        </array>
+
         <key>FirebaseAppDelegateProxyEnabled</key>
         <false/>
+
+        <!-- ✅ Allow all URLs in WebView -->
         <key>NSAppTransportSecurity</key>
         <dict>
             <key>NSAllowsArbitraryLoads</key>
             <true/>
         </dict>
-        <key>UIBackgroundModes</key>
-        <array>
-            <string>fetch</string>
-            <string>remote-notification</string>
-        </array>
-
 
         <!-- ✅ iOS WebView support (UIKit views in Flutter) -->
         <key>io.flutter.embedded_views_preview</key>
@@ -82,12 +86,5 @@
         <true/>
         <key>UIApplicationSupportsIndirectInputEvents</key>
         <true/>
-
-        <!-- ✅ Allow all URLs in WebView -->
-        <key>NSAppTransportSecurity</key>
-        <dict>
-            <key>NSAllowsArbitraryLoads</key>
-            <true/>
-        </dict>
     </dict>
 </plist>
