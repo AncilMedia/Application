@@ -141,7 +141,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.shade300),
           onPressed: _handleRegister,
-          child: const Text("Register", style: TextStyle(fontSize: 16)),
+          child:  Text("Register", style: GoogleFonts.poppins(fontSize: 16,color: Colors.white,fontWeight: FontWeight.w500)),
         ),
       ),
       const SizedBox(height: 12),
