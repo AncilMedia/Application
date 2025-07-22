@@ -1,7 +1,11 @@
 import 'dart:math';
 import 'dart:ui';
+import 'package:ancilmedia/view/Homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../Controller/register_controller.dart';
+import 'Register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,6 +19,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   late List<Particle> _particles;
   final int numberOfParticles = 50;
   bool _obscurePassword = true;
+
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  final AuthController _authController = AuthController();
 
   @override
   void initState() {
@@ -34,9 +43,45 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     _controller.repeat();
   }
 
+  Future<void> _handleLogin() async {
+    final identifier = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (identifier.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Logging in...')),
+    );
+
+    final success = await _authController.loginUser(
+      identifier: identifier,
+      password: password,
+    );
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login successful!')),
+      );
+     Navigator.push(context, MaterialPageRoute(builder: (context)=>Homepage()));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login failed. Please try again.')),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -48,7 +93,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     return Scaffold(
       body: Stack(
         children: [
-          // Top-left circle
           Positioned(
             top: -screenHeight * 0.1,
             left: -screenWidth * 0.1,
@@ -61,8 +105,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               ),
             ),
           ),
-
-          // Bottom-right circle
           Positioned(
             bottom: -screenHeight * 0.1,
             right: -screenWidth * 0.1,
@@ -75,14 +117,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               ),
             ),
           ),
-
-          // Animated Particles
           CustomPaint(
             size: Size(screenWidth, screenHeight),
             painter: ParticlePainter(_particles),
           ),
-
-          // Login Form with glass effect
           Padding(
             padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
             child: Center(
@@ -108,9 +146,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Name Field
                         Text(
-                          "Name",
+                          "Username or Email",
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w500,
                             fontSize: 16,
@@ -119,30 +156,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
+                          controller: _usernameController,
                           style: TextStyle(color: Colors.cyan.shade900),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.cyan.shade900),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.cyan.shade900),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.cyan.shade900, width: 1.5),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            hintText: 'Enter your name',
-                            hintStyle: TextStyle(color: Colors.cyan.shade900),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          ),
+                          decoration: _inputDecoration("Enter your username or email"),
                         ),
                         const SizedBox(height: 16),
-
-                        // Password Field
                         Text(
                           "Password",
                           style: GoogleFonts.poppins(
@@ -153,26 +171,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
+                          controller: _passwordController,
                           obscureText: _obscurePassword,
                           style: TextStyle(color: Colors.cyan.shade900),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.cyan.shade900),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.cyan.shade900),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.cyan.shade900, width: 1.5),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            hintText: 'Enter your password',
-                            hintStyle: TextStyle(color: Colors.cyan.shade900),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: _inputDecoration("Enter your password").copyWith(
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -187,14 +189,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           ),
                         ),
                         const SizedBox(height: 24),
-
-                        // Login Button
                         SizedBox(
                           width: double.infinity,
                           child: InkWell(
-                            onTap: () {
-                              // Handle login
-                            },
+                            onTap: _handleLogin,
                             child: Container(
                               height: MediaQuery.of(context).size.height * .05,
                               decoration: BoxDecoration(
@@ -207,7 +205,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                   style: GoogleFonts.poppins(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.white
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),
@@ -215,8 +213,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           ),
                         ),
                         const SizedBox(height: 12),
-
-                        // Register prompt
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -228,11 +224,14 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               ),
                             ),
                             GestureDetector(
-                              onTap: (){
-                                Navigator.push(context, MaterialPageRoute(builder: (context)=>LoginPage()));
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => RegisterPage()),
+                                );
                               },
                               child: Text(
-                                "Login",
+                                "Register",
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
@@ -253,39 +252,26 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       ),
     );
   }
-}
 
-class Particle {
-  double x = Random().nextDouble() * 400;
-  double y = Random().nextDouble() * 800;
-  double dx = (Random().nextDouble() - 0.5) * 2;
-  double dy = (Random().nextDouble() - 0.5) * 2;
-  double radius = Random().nextDouble() * 3 + 1;
-  Color color = Colors.teal.withOpacity(0.5 + Random().nextDouble() * 0.5);
-
-  void update(Size screenSize) {
-    x += dx;
-    y += dy;
-
-    if (x <= 0 || x >= screenSize.width) dx = -dx;
-    if (y <= 0 || y >= screenSize.height) dy = -dy;
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.1),
+      border: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.cyan.shade900),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.cyan.shade900),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.cyan.shade900, width: 1.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.cyan.shade900),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    );
   }
-}
-
-class ParticlePainter extends CustomPainter {
-  final List<Particle> particles;
-
-  ParticlePainter(this.particles);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    for (var particle in particles) {
-      paint.color = particle.color;
-      canvas.drawCircle(Offset(particle.x, particle.y), particle.radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
