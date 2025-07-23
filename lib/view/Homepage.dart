@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../Controller/Home_item_controller.dart';
 import '../View_model/Custom_snackbar.dart';
 import '../model/Home_Item.dart';
 import 'Responsive/Responsive_font.dart';
 import '../View_model/Web_view.dart';
 import 'detailpage.dart';
+import 'Login_page.dart'; // Make sure this is the correct path
 
 class Homepage extends StatefulWidget {
   @override
@@ -24,13 +27,32 @@ class _HomepageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
-    futureItems = ApiService.fetchItems();
+    _loadUserIdAndFetchItems();
+  }
+
+  Future<void> _loadUserIdAndFetchItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+
+    if (userId != null && userId.isNotEmpty) {
+      setState(() {
+        futureItems = ApiService.fetchItemsByUserId(userId);
+      });
+    } else {
+      print("⚠️ userId not found in SharedPreferences.");
+    }
   }
 
   Future<void> _handleRefresh() async {
     setState(() => _isRefreshing = true);
-    futureItems = ApiService.fetchItems();
-    await futureItems;
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+
+    if (userId != null && userId.isNotEmpty) {
+      futureItems = ApiService.fetchItemsByUserId(userId);
+      await futureItems;
+    }
+
     await Future.delayed(const Duration(milliseconds: 500));
     setState(() => _isRefreshing = false);
   }
@@ -43,6 +65,17 @@ class _HomepageState extends State<Homepage> {
     });
   }
 
+  Future<void> logoutUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('accessToken');
+    await prefs.remove('refreshToken');
+    await prefs.remove('userId');
+    await prefs.remove('role');
+    await prefs.setBool('isLoggedIn', false);
+
+    print('🚪 Logged out successfully.');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,10 +86,11 @@ class _HomepageState extends State<Homepage> {
           if (snapshot.connectionState == ConnectionState.waiting && !_isRefreshing) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
+            print('Error: ${snapshot.error}');
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          List<Item> items = snapshot.data!;
+          List<Item> items = snapshot.data ?? [];
           if (_isSearching && _searchQuery.isNotEmpty) {
             items = items
                 .where((item) => item.title.toLowerCase().contains(_searchQuery.toLowerCase()))
@@ -80,32 +114,7 @@ class _HomepageState extends State<Homepage> {
                     floating: true,
                     snap: true,
                     title: _isSearching
-                        ? Container(
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Center(
-                        child: TextField(
-                          controller: _searchController,
-                          autofocus: true,
-                          decoration: const InputDecoration(
-                            hintText: 'Search...',
-                            border: InputBorder.none,
-                            isDense: true,
-                          ),
-                          style: GoogleFonts.poppins(color: Colors.black),
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value;
-                            });
-                          },
-                        ),
-                      ),
-                    )
+                        ? _buildSearchField()
                         : CustomTextScale(
                       child: Text('FAOG Hawaii', style: GoogleFonts.poppins()),
                     ),
@@ -116,8 +125,17 @@ class _HomepageState extends State<Homepage> {
                       ),
                       if (!_isSearching)
                         IconButton(
-                          onPressed: () => print("pressed profile button in appbar"),
-                          icon: const Icon(Iconsax.profile_circle),
+                          onPressed: () async {
+                            await logoutUser();
+                            if (context.mounted) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LoginPage()),
+                                    (route) => false,
+                              );
+                            }
+                          },
+                          icon: const Icon(Iconsax.logout),
                         ),
                     ],
                   ),
@@ -131,7 +149,7 @@ class _HomepageState extends State<Homepage> {
                         onTap: () async {
                           if (itemType == 'list') {
                             final subList = await ApiService.fetchSubItems(item.id);
-                            if (subList.isNotEmpty){
+                            if (subList.isNotEmpty) {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -154,55 +172,13 @@ class _HomepageState extends State<Homepage> {
                                 ),
                               );
                             } else {
-                              debugPrint('❌ Invalid or empty URL.');
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text("Cannot open the link.")),
                               );
                             }
                           }
                         },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 10),
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(25),
-                              topRight: Radius.circular(25),
-                              bottomLeft: Radius.circular(5),
-                              bottomRight: Radius.circular(5),
-                            ),
-                            child: SizedBox(
-                              height: MediaQuery.of(context).size.height * .3,
-                              width: MediaQuery.of(context).size.width,
-                              child: Stack(
-                                children: [
-                                  Positioned.fill(
-                                    child: Image.network(
-                                      item.image,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => Container(
-                                        color: Colors.grey.shade300,
-                                        child: const Icon(Icons.broken_image),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    left: 0,
-                                    right: 0,
-                                    child: Container(
-                                      color: Colors.black54,
-                                      padding: const EdgeInsets.all(8),
-                                      child: Text(
-                                        item.title,
-                                        style: GoogleFonts.poppins(color: Colors.white),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                        child: _buildItemCard(context, item),
                       );
                     },
                     childCount: items.length,
@@ -215,15 +191,77 @@ class _HomepageState extends State<Homepage> {
       ),
     );
   }
-}
 
-class TabletContent extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        "This is tablet view content",
-        style: GoogleFonts.poppins(fontSize: 16),
+  Widget _buildSearchField() {
+    return Container(
+      height: 42,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade400),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Center(
+        child: TextField(
+          controller: _searchController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Search...',
+            border: InputBorder.none,
+            isDense: true,
+          ),
+          style: GoogleFonts.poppins(color: Colors.black),
+          onChanged: (value) {
+            setState(() {
+              _searchQuery = value;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemCard(BuildContext context, Item item) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 10),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(25),
+          topRight: Radius.circular(25),
+          bottomLeft: Radius.circular(5),
+          bottomRight: Radius.circular(5),
+        ),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * .3,
+          width: MediaQuery.of(context).size.width,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.network(
+                  item.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey.shade300,
+                    child: const Icon(Icons.broken_image),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  color: Colors.black54,
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    item.title,
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

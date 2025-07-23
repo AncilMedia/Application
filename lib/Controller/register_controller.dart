@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../Env_File.dart'; // Replace with your baseUrl file
+import 'package:shared_preferences/shared_preferences.dart';
+import '../Env_File.dart';
 
 class AuthController {
   // Register a new user
@@ -15,7 +16,6 @@ class AuthController {
       final trimmedPhone = phone.trim();
       final trimmedEmail = email.trim();
 
-      // Ensure at least phone or email is provided
       if (trimmedPhone.isEmpty && trimmedEmail.isEmpty) {
         print("⚠️ Registration failed: Phone or Email required.");
         return false;
@@ -28,7 +28,6 @@ class AuthController {
         'packageName': packageName.trim(),
       };
 
-      // Conditionally add phone and email
       if (trimmedPhone.isNotEmpty && trimmedPhone != '0000000000') {
         body['phone'] = trimmedPhone;
       }
@@ -58,27 +57,44 @@ class AuthController {
     }
   }
 
-  // Login existing user
+  // Login and store token/user info
   Future<bool> loginUser({
     required String identifier, // email or phone
     required String password,
+    required String packageName,
+    String? appName, // optional
   }) async {
     try {
+      final Map<String, dynamic> requestBody = {
+        'identifier': identifier.trim(),
+        'password': password.trim(),
+        'packageName': packageName.trim(),
+      };
+
+      if (appName != null && appName.trim().isNotEmpty) {
+        requestBody['appName'] = appName.trim();
+      }
+
       final response = await http
           .post(
         Uri.parse('$baseUrl/api/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'identifier': identifier.trim(),
-          'password': password.trim(),
-        }),
+        body: jsonEncode(requestBody),
       )
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         print('✅ Login successful: $data');
-        // You can save token or user info here
+
+        // Store tokens and user info
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('accessToken', data['accessToken']);
+        await prefs.setString('refreshToken', data['refreshToken']);
+        await prefs.setString('userId', data['user']['userId']);
+        await prefs.setString('role', data['user']['role']);
+        await prefs.setBool('isLoggedIn', true);
+
         return true;
       } else {
         print('❌ Login failed: ${response.statusCode} ${response.body}');

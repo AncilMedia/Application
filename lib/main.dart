@@ -7,24 +7,22 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'view/Homepage.dart';
 import 'package:ancilmedia/Env_File.dart'; // Your backend baseUrl
 
-// 🔔 Local Notification Plugin
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
-// 🔧 Android Channel Setup
 const AndroidNotificationChannel defaultChannel = AndroidNotificationChannel(
-  'default', // Must match your backend
+  'default',
   'Default Notifications',
   description: 'General app notifications',
   importance: Importance.high,
 );
 
-// 🔕 Background FCM Handler
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -32,7 +30,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("🔕 [Background] Message: ${message.messageId}");
 }
 
-// 🔔 Local Notification Display
 void _showFlutterNotification(RemoteMessage message) {
   RemoteNotification? notification = message.notification;
   AndroidNotification? android = message.notification?.android;
@@ -59,7 +56,6 @@ void _showFlutterNotification(RemoteMessage message) {
   }
 }
 
-// ✅ Local Notification Initialization
 Future<void> _initLocalNotifications() async {
   const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
   const iosSettings = DarwinInitializationSettings(
@@ -75,23 +71,28 @@ Future<void> _initLocalNotifications() async {
 
   await flutterLocalNotificationsPlugin.initialize(settings);
   await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(defaultChannel);
 }
 
-// ✅ Main Entry Point
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await _initLocalNotifications();
-
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  runApp(const MyApp());
+  // ✅ Check login state before runApp
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('accessToken');
+
+  runApp(MyApp(isLoggedIn: token != null));
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  const MyApp({super.key, required this.isLoggedIn});
+
   @override
   State<MyApp> createState() => _MyAppState();
 }
@@ -107,14 +108,12 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _setupFirebaseMessaging() async {
-    // 🔓 Ask for permission
     NotificationSettings settings = await messaging.requestPermission();
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
       print('✅ Notification permission granted.');
 
-      // 🟦 iOS: Wait for APNs Token
       if (Platform.isIOS) {
         String? apnsToken;
         while (apnsToken == null) {
@@ -126,11 +125,9 @@ class _MyAppState extends State<MyApp> {
         print('📲 APNs Token: $apnsToken');
       }
 
-      // 📡 Get FCM token
       String? fcmToken = await messaging.getToken();
       print('📱 FCM Token: $fcmToken');
 
-      // 🔁 Register token with backend
       if (fcmToken != null && fcmToken.isNotEmpty) {
         try {
           final response = await http.post(
@@ -148,16 +145,13 @@ class _MyAppState extends State<MyApp> {
         print('❌ FCM Token is null or empty');
       }
 
-      // 🔔 Handle foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         print('🔔 Foreground message: ${message.notification?.title}');
         _showFlutterNotification(message);
       });
 
-      // 📲 Handle tapped notifications
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         print('📲 Notification tapped: ${message.notification?.title}');
-        // TODO: Handle navigation if needed
       });
     } else {
       print('❌ Notifications not authorized');
@@ -168,7 +162,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LoginPage(),
+      home: widget.isLoggedIn ?  Homepage() : const LoginPage(),
     );
   }
 }

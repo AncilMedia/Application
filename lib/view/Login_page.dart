@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'dart:ui';
-import 'package:ancilmedia/view/Homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Controller/register_controller.dart';
+import '../view/Homepage.dart';
 import 'Register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -28,6 +30,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
+
     _particles = List.generate(numberOfParticles, (index) => Particle());
 
     _controller = AnimationController(
@@ -41,6 +44,22 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     });
 
     _controller.repeat();
+
+    // ✅ Check if already logged in
+    checkLoginStatus();
+  }
+
+  Future<void> checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    if (isLoggedIn) {
+      // You can also check token validity here if needed
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => Homepage()),
+      );
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -58,21 +77,38 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       const SnackBar(content: Text('Logging in...')),
     );
 
-    final success = await _authController.loginUser(
-      identifier: identifier,
-      password: password,
-    );
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final packageName = info.packageName;
+      final appName = info.appName;
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login successful!')),
+      final success = await _authController.loginUser(
+        identifier: identifier,
+        password: password,
+        packageName: packageName,
+        appName: appName, // optional
       );
-     Navigator.push(context, MaterialPageRoute(builder: (context)=>Homepage()));
-    } else {
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login successful!')),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => Homepage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed. Please try again.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login failed. Please try again.')),
+        SnackBar(content: Text('Error during login: $e')),
       );
     }
   }
